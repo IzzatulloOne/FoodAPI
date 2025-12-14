@@ -74,7 +74,7 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
         return Buyurtma.objects.none()
 
 
-class BuyurtmaRetrieveUpdateView(generics.ListCreateAPIView):
+class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = BuyurtmaItemsSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = CustomPagination
@@ -86,7 +86,9 @@ class BuyurtmaRetrieveUpdateView(generics.ListCreateAPIView):
         if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
             return BuyurtmaItems.objects.all()
         if user.is_authenticated:
-            return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user)
+            if user.is_authenticated:
+                return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
+            return BuyurtmaItems.objects.none()
         return BuyurtmaItems.objects.none()
 
 
