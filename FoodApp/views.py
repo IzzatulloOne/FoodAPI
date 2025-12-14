@@ -1,14 +1,11 @@
-from rest_framework import generics, status
-from rest_framework.response import Response
+from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, BasePermission
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Food, Promocode, Buyurtma, BuyurtmaItems
-from .serializers import FoodSerializer,PromocodeSerializer,BuyurtmaSerializer,BuyurtmaItemsSerializer
-from .pagination import CustomPagination
 from django_filters import rest_framework as filters
-from .models import Buyurtma
-
+from .models import Food, Promocode, Buyurtma, BuyurtmaItems
+from .serializers import FoodSerializer, PromocodeSerializer, BuyurtmaSerializer, BuyurtmaItemsSerializer
+from .pagination import CustomPagination
 
 
 class IsAdminOrReadOnly(BasePermission):
@@ -67,14 +64,26 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
+        if user.is_superuser or getattr(user, 'role', False):
             return Buyurtma.objects.all()
-        if user.is_authenticated:
-            return Buyurtma.objects.filter(user_id=user)
-        return Buyurtma.objects.none()
+        return Buyurtma.objects.filter(user_id=user.id)
+
+    def perform_create(self, serializer):
+        serializer.save(user_id=self.request.user)
 
 
 class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+    serializer_class = BuyurtmaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', False):
+            return Buyurtma.objects.all()
+        return Buyurtma.objects.filter(user_id=user.id)
+
+
+class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
     serializer_class = BuyurtmaItemsSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = CustomPagination
@@ -83,24 +92,9 @@ class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
+        if user.is_superuser or getattr(user, 'role', False):
             return BuyurtmaItems.objects.all()
-        if user.is_authenticated:
-            if user.is_authenticated:
-                return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
-            return BuyurtmaItems.objects.none()
-        return BuyurtmaItems.objects.none()
+        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
 
-
-class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
-    serializer_class = BuyurtmaItemsSerializer
-    permission_classes = [IsAuthenticated]
-    pagination_class = CustomPagination
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['buyurtma_id', 'food_id']
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
-            return BuyurtmaItems.objects.all()
-        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user)
+    def perform_create(self, serializer):
+        serializer.save()
