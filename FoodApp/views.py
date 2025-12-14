@@ -11,6 +11,13 @@ from .models import Buyurtma
 
 
 
+class IsAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return True
+        return request.user.is_authenticated and request.user.role
+
+
 class BuyurtmaFilter(filters.FilterSet):
     status = filters.CharFilter(field_name='status')
 
@@ -19,11 +26,10 @@ class BuyurtmaFilter(filters.FilterSet):
         fields = ['status']
 
 
-class IsAdminOrReadOnly(BasePermission):
-    def has_permission(self, request, view):
-        if request.method in ['GET', 'HEAD', 'OPTIONS']:
-            return True
-        return request.user.is_authenticated and request.user.role
+class BuyurtmaItemsFilter(filters.FilterSet):
+    class Meta:
+        model = BuyurtmaItems
+        fields = ['buyurtma_id', 'food_id']
 
 
 class FoodListCreateView(generics.ListCreateAPIView):
@@ -66,21 +72,18 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
         return Buyurtma.objects.filter(user_id=user)
 
 
-class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
-    queryset = Buyurtma.objects.all()
-    serializer_class = BuyurtmaSerializer
+class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
+    serializer_class = BuyurtmaItemsSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = BuyurtmaItemsFilter
 
-    def update(self, request, *args, **kwargs):
-        buyurtma = self.get_object()
-
-        if not request.user.role and buyurtma.user_id != request.user:
-            return Response(
-                {"detail": "Ruxsat yo‘q"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        return super().update(request, *args, **kwargs)
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.role:
+            return BuyurtmaItems.objects.all()
+        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user)
 
 
 class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
