@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, BasePermission
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as filters
 from .models import Food, Promocode, Buyurtma, BuyurtmaItems
 from .serializers import FoodSerializer,PromocodeSerializer,BuyurtmaSerializer,BuyurtmaItemsSerializer
 from .pagination import CustomPagination
@@ -15,12 +16,21 @@ class IsAdminOrReadOnly(BasePermission):
         return request.user.is_authenticated and request.user.role
 
 
+class BuyurtmaFilter(filters.FilterSet):
+    status = filters.CharFilter(field_name='status')
+
+    class Meta:
+        model = Buyurtma
+        fields = ['status']
+
+
 class FoodListCreateView(generics.ListCreateAPIView):
     queryset = Food.objects.all()
     serializer_class = FoodSerializer
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = BuyurtmaFilter
     filterset_fields = ['narxi']
     search_fields = ['nomi', 'description']
     ordering_fields = ['narxi', 'created_at']
@@ -33,6 +43,7 @@ class PromocodeListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAdminUser]
     pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = BuyurtmaFilter
     filterset_fields = ['nomi']
     ordering_fields = ['start_date', 'end_date']
     ordering = ['-start_date']
@@ -43,6 +54,7 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = BuyurtmaFilter
     filterset_fields = ['status']
     search_fields = ['manzil']
     ordering_fields = ['created_at', 'total_price']
@@ -80,6 +92,7 @@ class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
+    filterset_class = BuyurtmaFilter
     filterset_fields = ['buyurtma_id', 'food_id']
 
     def get_queryset(self):
