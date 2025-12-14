@@ -15,7 +15,7 @@ class IsAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         if request.method in ['GET', 'HEAD', 'OPTIONS']:
             return True
-        return request.user.is_authenticated and request.user.role
+        return request.user.is_authenticated and getattr(request.user, 'role', False)
 
 
 class BuyurtmaFilter(filters.FilterSet):
@@ -67,7 +67,7 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser or user.role:
+        if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
             return Buyurtma.objects.all()
         return Buyurtma.objects.filter(user_id=user)
 
@@ -81,7 +81,7 @@ class BuyurtmaRetrieveUpdateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser or user.role:
+        if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
             return BuyurtmaItems.objects.all()
         return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user)
 
