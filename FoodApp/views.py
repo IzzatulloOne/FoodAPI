@@ -72,7 +72,7 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
         return Buyurtma.objects.filter(user_id=user)
 
 
-class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
+class BuyurtmaRetrieveUpdateView(generics.ListCreateAPIView):
     serializer_class = BuyurtmaItemsSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = CustomPagination
