@@ -33,10 +33,39 @@ class PromocodeSerializer(ModelSerializer):
         read_only_fields = ['id']
 
 
+from rest_framework import serializers
+from .models import BuyurtmaItems, Food
+
 class BuyurtmaItemsSerializer(serializers.ModelSerializer):
+    food = serializers.PrimaryKeyRelatedField(source='food_id', queryset=Food.objects.all())
+
     class Meta:
         model = BuyurtmaItems
-        fields = ['food', 'count']
+        fields = ['id', 'food', 'count', 'total_price', 'buyurtma_id']
+        read_only_fields = ['id', 'total_price']
+
+    def create(self, validated_data):
+        buyurtma = validated_data['buyurtma_id']
+
+        if buyurtma.status != 'yangi':
+            raise serializers.ValidationError(
+                "Buyurtma holati o'zgargan, mahsulot qo'shib bo'lmaydi"
+            )
+
+        food = validated_data.pop('food_id')
+        count = validated_data['count']
+
+        validated_data['total_price'] = max(food.narxi * count, 0)
+        validated_data['food_id'] = food
+
+        item = super().create(validated_data)
+
+        items = buyurtma.buyurtmaitems_set.all()
+        buyurtma.total_price = sum(i.total_price for i in items)
+        buyurtma.save()
+
+        return item
+
 
 class BuyurtmaSerializer(serializers.ModelSerializer):
     items = BuyurtmaItemsSerializer(many=True, write_only=True)
