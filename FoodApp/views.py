@@ -69,10 +69,10 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
             return Buyurtma.objects.none()
         if user.is_superuser or getattr(user, 'role', False):
             return Buyurtma.objects.all()
-        return Buyurtma.objects.filter(user_id=user.id)
+        return Buyurtma.objects.filter(user=user)
 
     def perform_create(self, serializer):
-        serializer.save(user_id=self.request.user.id)
+        serializer.save(user=self.request.user)
 
 
 class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -88,7 +88,7 @@ class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
             return BuyurtmaItems.objects.none()
         if user.is_superuser or getattr(user, 'role', False):
             return BuyurtmaItems.objects.all()
-        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
+        return BuyurtmaItems.objects.filter(buyurtma__user=user)
 
 
 class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
@@ -104,9 +104,7 @@ class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
             return BuyurtmaItems.objects.none()
         if user.is_superuser or getattr(user, 'role', False):
             return BuyurtmaItems.objects.all()
-        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
+        return BuyurtmaItems.objects.filter(buyurtma__user=user)
 
     def perform_create(self, serializer):
-        user = self.request.user
-        if user.is_authenticated:
-            serializer.save(buyurtma_id=serializer.validated_data['buyurtma_id'])
+        serializer.save()
