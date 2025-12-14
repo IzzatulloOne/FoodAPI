@@ -85,7 +85,9 @@ class BuyurtmaRetrieveUpdateView(generics.ListCreateAPIView):
         user = self.request.user
         if user.is_authenticated and (user.is_superuser or getattr(user, 'role', False)):
             return BuyurtmaItems.objects.all()
-        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user)
+        if user.is_authenticated:
+            return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user)
+        return BuyurtmaItems.objects.none()
 
 
 class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
