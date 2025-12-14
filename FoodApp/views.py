@@ -1,4 +1,5 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, BasePermission
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
@@ -64,23 +65,30 @@ class BuyurtmaListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if not user.is_authenticated:
+            return Buyurtma.objects.none()
         if user.is_superuser or getattr(user, 'role', False):
             return Buyurtma.objects.all()
         return Buyurtma.objects.filter(user_id=user.id)
 
     def perform_create(self, serializer):
-        serializer.save(user_id=self.request.user)
+        serializer.save(user_id=self.request.user.id)
 
 
 class BuyurtmaRetrieveUpdateView(generics.RetrieveUpdateAPIView):
-    serializer_class = BuyurtmaSerializer
+    serializer_class = BuyurtmaItemsSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = BuyurtmaItemsFilter
 
     def get_queryset(self):
         user = self.request.user
+        if not user.is_authenticated:
+            return BuyurtmaItems.objects.none()
         if user.is_superuser or getattr(user, 'role', False):
-            return Buyurtma.objects.all()
-        return Buyurtma.objects.filter(user_id=user.id)
+            return BuyurtmaItems.objects.all()
+        return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
 
 
 class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
@@ -92,9 +100,13 @@ class BuyurtmaItemsListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if not user.is_authenticated:
+            return BuyurtmaItems.objects.none()
         if user.is_superuser or getattr(user, 'role', False):
             return BuyurtmaItems.objects.all()
         return BuyurtmaItems.objects.filter(buyurtma_id__user_id=user.id)
 
     def perform_create(self, serializer):
-        serializer.save()
+        user = self.request.user
+        if user.is_authenticated:
+            serializer.save(buyurtma_id=serializer.validated_data['buyurtma_id'])
