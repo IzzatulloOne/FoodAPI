@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-l34gw+0*w1%7ob01^376&pd-zwx8)zx7mi&mm7p--&+z#&w9qx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['167.99.140.148', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['167.99.140.148', 'localhost']
 
 
 # Application definition
@@ -81,13 +81,14 @@ WSGI_APPLICATION = 'FoodAPI.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'food_delivery_db',
-        'USER': 'postgres',
-        'PASSWORD': '1',
-        'HOST': 'localhost',
+        'NAME': 'food_db',
+        'USER': 'food_user',
+        'PASSWORD': 'strong_password',
+        'HOST': '127.0.0.1',
         'PORT': '5432',
     }
 }
+
 
 
 # Password validation
