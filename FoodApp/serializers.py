@@ -1,6 +1,23 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
 from .models import Food, Promocode, Buyurtma, BuyurtmaItems, CustomUser
+from .models import CustomUser
+
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'phone', 'password']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = CustomUser(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
 
 
 class CustomUserSerializer(ModelSerializer):
@@ -34,34 +51,17 @@ class PromocodeSerializer(ModelSerializer):
 
 
 class BuyurtmaItemsSerializer(serializers.ModelSerializer):
-    food = serializers.PrimaryKeyRelatedField(source='food_id', queryset=Food.objects.all())
-
+    food = serializers.PrimaryKeyRelatedField(
+        source='food_id',
+        queryset=Food.objects.all()
+    )
     class Meta:
         model = BuyurtmaItems
-        fields = ['id', 'food', 'count', 'total_price', 'buyurtma_id']
-        read_only_fields = ['id', 'total_price']
-
-    def create(self, validated_data):
-        buyurtma = validated_data['buyurtma_id']
-
-        if buyurtma.status != 'yangi':
-            raise serializers.ValidationError("Buyurtma holati o'zgargan, mahsulot qo'shib bo'lmaydi")
-
-        food = validated_data.pop('food_id')
-        count = validated_data['count']
-
-        validated_data['total_price'] = max(food.narxi * count, 0)
-        validated_data['food_id'] = food
-
-        item = super().create(validated_data)
-
-        buyurtma.total_price = sum(i.total_price for i in buyurtma.buyurtmaitems_set.all())
-        buyurtma.save()
-
-        return item
+        fields = ['food', 'count']
 
 
 class BuyurtmaSerializer(serializers.ModelSerializer):
+    items = BuyurtmaItemsSerializer(many=True, write_only=True)
     promocode = serializers.PrimaryKeyRelatedField(
         source='promocode_id',
         queryset=Promocode.objects.all(),
@@ -71,24 +71,46 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Buyurtma
-        fields = ['id', 'user_id', 'manzil', 'total_price', 'promocode', 'promocode_applied', 'status', 'created_at']
-        read_only_fields = ['id', 'created_at', 'total_price']
+        fields = ['id','user_id','manzil','items','total_price','promocode','promocode_applied','status','created_at']
+        read_only_fields = ['id', 'total_price', 'created_at', 'status']
 
-    def update(self, instance, validated_data):
-        instance = super().update(instance, validated_data)
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', None)
 
-        items_total = sum(item.food_id.narxi * item.count for item in instance.buyurtmaitems_set.all())
+        if not items_data:
+            raise serializers.ValidationError({
+                "items": "Buyurtma yaratishda mahsulotlar bo‘lishi shart"
+            })
+
+        promocode = validated_data.get('promocode_id')
+
+        buyurtma = Buyurtma.objects.create(**validated_data)
+
+        total = 0
+
+        for item in items_data:
+            food = item['food_id']
+            count = item['count']
+
+            item_total = food.narxi * count
+
+            BuyurtmaItems.objects.create(
+                buyurtma_id=buyurtma,
+                food_id=food,
+                count=count,
+                total_price=item_total
+            )
+
+            total += item_total
+
         discount = 0
-        promocode = validated_data.get('promocode_id') or instance.promocode_id
+        if promocode and promocode.is_active():
+            discount = min(promocode.discount_amount, promocode.max_discount)
+            promocode.used_count += 1
+            promocode.save()
+            buyurtma.promocode_applied = True
 
-        if promocode and not instance.promocode_applied and instance.status == 'yangi':
-            if promocode.is_active():
-                discount = min(promocode.discount_amount, promocode.max_discount)
-                promocode.used_count += 1
-                promocode.save()
-                instance.promocode_applied = True
+        buyurtma.total_price = max(total - discount, 0)
+        buyurtma.save()
 
-        instance.total_price = max(items_total - discount, 0)
-        instance.save()
-
-        return instance
+        return buyurtma

@@ -7,13 +7,38 @@ from django_filters import rest_framework as filters
 from .models import Food, Promocode, Buyurtma, BuyurtmaItems
 from .serializers import FoodSerializer, PromocodeSerializer, BuyurtmaSerializer, BuyurtmaItemsSerializer
 from .pagination import CustomPagination
-
+from .serializers import RegisterSerializer
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class IsAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         if request.method in ['GET', 'HEAD', 'OPTIONS']:
             return True
         return request.user.is_authenticated and getattr(request.user, 'role', False)
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+            },
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
+
 
 
 class BuyurtmaFilter(filters.FilterSet):

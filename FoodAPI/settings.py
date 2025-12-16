@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'drf_yasg',
-    'djoser',
     'django_filters',
     'FoodApp.apps.FoodappConfig',
 ]
@@ -82,9 +81,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'food_db',
-        'USER': 'food_user',
-        'PASSWORD': 'strong_password',
-        'HOST': '127.0.0.1',
+        'USER': 'postgres',
+        'PASSWORD': '1',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
@@ -145,9 +144,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'FoodApp.pagination.CustomPagination',
     'PAGE_SIZE': 10, 
 
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
