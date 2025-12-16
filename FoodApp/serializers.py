@@ -42,8 +42,17 @@ class BuyurtmaItemInlineSerializer(serializers.ModelSerializer):
         fields = ['food_id', 'count']
 
 
+class BuyurtmaItemReadSerializer(serializers.ModelSerializer):
+    food = FoodSerializer(source='food_id', read_only=True)
+
+    class Meta:
+        model = BuyurtmaItems
+        fields = ['food', 'count', 'total_price']
+
+
 class BuyurtmaSerializer(serializers.ModelSerializer):
     items = BuyurtmaItemInlineSerializer(many=True, write_only=True)
+    items_detail = BuyurtmaItemReadSerializer(source='buyurtmaitems_set', many=True, read_only=True)
     promocode_id = serializers.PrimaryKeyRelatedField(
         queryset=Promocode.objects.all(),
         required=False,
@@ -58,6 +67,7 @@ class BuyurtmaSerializer(serializers.ModelSerializer):
             'manzil',
             'promocode_id',
             'items',
+            'items_detail',  
             'total_price',
             'status',
             'promocode_applied',

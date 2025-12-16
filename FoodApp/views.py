@@ -15,10 +15,18 @@ from .serializers import (
     RegisterSerializer
 )
 from .pagination import CustomPagination
+from drf_spectacular.utils import extend_schema
+
 
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=RegisterSerializer,
+        responses={201: RegisterSerializer},
+    )
+
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
