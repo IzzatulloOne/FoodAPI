@@ -50,57 +50,40 @@ class PromocodeSerializer(ModelSerializer):
         read_only_fields = ['id']
 
 
-class BuyurtmaItemsSerializer(serializers.ModelSerializer):
-    food = serializers.PrimaryKeyRelatedField(
-        source='food_id',
-        queryset=Food.objects.all()
-    )
+class BuyurtmaItemInlineSerializer(serializers.ModelSerializer):
+    food_id = serializers.PrimaryKeyRelatedField(queryset=Food.objects.all())
+
     class Meta:
         model = BuyurtmaItems
-        fields = ['food', 'count']
+        fields = ['food_id', 'count']
 
 
-class BuyurtmaSerializer(serializers.ModelSerializer):
-    items = BuyurtmaItemsSerializer(many=True, write_only=True)
-    promocode = serializers.PrimaryKeyRelatedField(
-        source='promocode_id',
-        queryset=Promocode.objects.all(),
-        required=False,
-        allow_null=True
-    )
+class BuyurtmaItemsSerializer(serializers.ModelSerializer):
+    items = BuyurtmaItemInlineSerializer(many=True, write_only=True)
+    promocode_id = serializers.PrimaryKeyRelatedField(queryset=Promocode.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = Buyurtma
-        fields = ['id','user_id','manzil','items','total_price','promocode','promocode_applied','status','created_at']
-        read_only_fields = ['id', 'total_price', 'created_at', 'status']
+        fields = ['id', 'user_id', 'manzil', 'promocode_id', 'items', 'total_price', 'status', 'promocode_applied', 'created_at']
+        read_only_fields = ['id', 'total_price', 'status', 'promocode_applied', 'created_at']
 
     def create(self, validated_data):
-        items_data = validated_data.pop('items', None)
-
-        if not items_data:
-            raise serializers.ValidationError({
-                "items": "Buyurtma yaratishda mahsulotlar bo‘lishi shart"
-            })
-
-        promocode = validated_data.get('promocode_id')
+        items_data = validated_data.pop('items')
+        promocode = validated_data.get('promocode_id', None)
 
         buyurtma = Buyurtma.objects.create(**validated_data)
 
         total = 0
-
         for item in items_data:
             food = item['food_id']
             count = item['count']
-
             item_total = food.narxi * count
-
             BuyurtmaItems.objects.create(
                 buyurtma_id=buyurtma,
                 food_id=food,
                 count=count,
                 total_price=item_total
             )
-
             total += item_total
 
         discount = 0
