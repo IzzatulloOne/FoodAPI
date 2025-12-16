@@ -1,75 +1,80 @@
-from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
-from .models import Food, Promocode, Buyurtma, BuyurtmaItems, CustomUser
-from .models import CustomUser
+from django.contrib.auth import get_user_model
+from .models import Food, Promocode, Buyurtma, BuyurtmaItems
 
+User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = CustomUser
+        model = User
         fields = ['id', 'username', 'email', 'phone', 'password']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
-        user = CustomUser(**validated_data)
+        user = User(**validated_data)
         user.set_password(password)
         user.save()
         return user
 
 
-class CustomUserSerializer(ModelSerializer):
-    password = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = CustomUser
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at']
-
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = CustomUser(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
-
-
-class FoodSerializer(ModelSerializer):
+class FoodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Food
         fields = '__all__'
-        read_only_fields = ['id', 'created_at']
 
 
-class PromocodeSerializer(ModelSerializer):
+class PromocodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Promocode
         fields = '__all__'
-        read_only_fields = ['id']
 
 
 class BuyurtmaItemInlineSerializer(serializers.ModelSerializer):
-    food_id = serializers.PrimaryKeyRelatedField(queryset=Food.objects.all())
+    food_id = serializers.PrimaryKeyRelatedField(
+        queryset=Food.objects.all()
+    )
 
     class Meta:
         model = BuyurtmaItems
         fields = ['food_id', 'count']
 
 
-class BuyurtmaItemsSerializer(serializers.ModelSerializer):
+class BuyurtmaSerializer(serializers.ModelSerializer):
     items = BuyurtmaItemInlineSerializer(many=True, write_only=True)
-    promocode_id = serializers.PrimaryKeyRelatedField(queryset=Promocode.objects.all(), required=False, allow_null=True)
+    promocode_id = serializers.PrimaryKeyRelatedField(
+        queryset=Promocode.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Buyurtma
-        fields = ['id', 'user_id', 'manzil', 'promocode_id', 'items', 'total_price', 'status', 'promocode_applied', 'created_at']
-        read_only_fields = ['id', 'total_price', 'status', 'promocode_applied', 'created_at']
+        fields = [
+            'id',
+            'user_id',
+            'manzil',
+            'promocode_id',
+            'items',
+            'total_price',
+            'status',
+            'promocode_applied',
+            'created_at'
+        ]
+        read_only_fields = [
+            'id',
+            'user_id',
+            'total_price',
+            'status',
+            'promocode_applied',
+            'created_at'
+        ]
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        promocode = validated_data.get('promocode_id', None)
+        promocode = validated_data.pop('promocode_id', None)
 
         buyurtma = Buyurtma.objects.create(**validated_data)
 
@@ -78,6 +83,7 @@ class BuyurtmaItemsSerializer(serializers.ModelSerializer):
             food = item['food_id']
             count = item['count']
             item_total = food.narxi * count
+
             BuyurtmaItems.objects.create(
                 buyurtma_id=buyurtma,
                 food_id=food,
